@@ -6,7 +6,12 @@ from typing import Callable
 
 import pytest
 
-from todo import InMemoryTaskRepository, SQLiteTaskRepository, Task, TaskRepository
+from todo import (
+    InMemoryTaskRepository,
+    SQLiteTaskRepository,
+    Task,
+    TaskRepository,
+)
 
 
 RepoFactory = Callable[[], TaskRepository]
@@ -66,6 +71,34 @@ def test_remove_task_drops_only_target(repo: TaskRepository) -> None:
 
     remaining_ids = [task.id for task in repo.list_tasks()]
     assert remaining_ids == [one.id, three.id]
+
+
+def test_tasks_are_returned_in_position_order(repo: TaskRepository) -> None:
+    first = repo.add("ship")
+    second = repo.add("test")
+    third = repo.add("deploy")
+
+    assert first is not None and second is not None and third is not None
+
+    titles = [task.title for task in repo.list_tasks()]
+    assert titles == ["ship", "test", "deploy"]
+
+    positions = [task.position for task in repo.list_tasks()]
+    assert positions == [0, 1, 2]
+
+
+def test_reorder_updates_positions(repo: TaskRepository) -> None:
+    first = repo.add("ship")
+    second = repo.add("test")
+    third = repo.add("deploy")
+
+    assert first is not None and second is not None and third is not None
+
+    repo.reorder([third.id, first.id, second.id])
+
+    tasks = repo.list_tasks()
+    assert [task.title for task in tasks] == ["deploy", "ship", "test"]
+    assert [task.position for task in tasks] == [0, 1, 2]
 
 
 def test_completion_stats_counts_done_tasks(repo: TaskRepository) -> None:
