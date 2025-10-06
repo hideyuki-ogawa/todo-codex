@@ -4,6 +4,7 @@ import sqlite3
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from todo import TaskId, TaskList, TaskRepository, SQLiteTaskRepository
 
@@ -11,6 +12,18 @@ from todo import TaskId, TaskList, TaskRepository, SQLiteTaskRepository
 st.set_page_config(page_title="Todo Tracker", layout="centered")
 
 DATABASE_PATH = Path("todo.db")
+
+task_reorder_component = components.declare_component(
+    "task_reorder", path=str(Path(__file__).parent / "components" / "task_reorder")
+)
+
+
+def render_reorder(tasks: TaskList) -> list[int] | None:
+    items = [
+        {"id": task.id, "title": task.title, "done": task.done}
+        for task in tasks
+    ]
+    return task_reorder_component(items=items, key="task-reorder", default=None)
 
 
 @st.cache_resource
@@ -60,6 +73,15 @@ if not current_tasks:
 else:
     done_count, total_count = repository.completion_stats()
     st.write(f"**{done_count} / {total_count} tasks completed**")
+
+    st.caption("Drag to rearrange tasks and update their priority order.")
+
+    reordered_ids = render_reorder(current_tasks)
+    if reordered_ids is not None and len(reordered_ids) == len(current_tasks):
+        current_order = [task.id for task in current_tasks]
+        if reordered_ids != current_order:
+            repository.reorder(reordered_ids)
+            st.experimental_rerun()
 
     for task in current_tasks:
         cols = st.columns([0.85, 0.15])
